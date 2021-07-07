@@ -69,7 +69,7 @@ namespace Upstream {
 class HealthCheckHostMonitorNullImpl : public HealthCheckHostMonitor {
 public:
   // Upstream::HealthCheckHostMonitor
-  void setUnhealthy() override {}
+  void setUnhealthy(UnhealthyType) override {}
 };
 
 /**
@@ -204,13 +204,6 @@ public:
   bool healthFlagGet(HealthFlag flag) const override { return health_flags_ & enumToInt(flag); }
   void healthFlagSet(HealthFlag flag) final { health_flags_ |= enumToInt(flag); }
 
-  ActiveHealthFailureType getActiveHealthFailureType() const override {
-    return active_health_failure_type_;
-  }
-  void setActiveHealthFailureType(ActiveHealthFailureType type) override {
-    active_health_failure_type_ = type;
-  }
-
   void setHealthChecker(HealthCheckHostMonitorPtr&& health_checker) override {
     health_checker_ = std::move(health_checker);
   }
@@ -253,7 +246,6 @@ private:
   void setEdsHealthFlag(envoy::config::core::v3::HealthStatus health_status);
 
   std::atomic<uint32_t> health_flags_{};
-  ActiveHealthFailureType active_health_failure_type_{};
   std::atomic<uint32_t> weight_;
   std::atomic<bool> used_;
 };
@@ -517,7 +509,9 @@ private:
 /**
  * Implementation of ClusterInfo that reads from JSON.
  */
-class ClusterInfoImpl : public ClusterInfo, protected Logger::Loggable<Logger::Id::upstream> {
+class ClusterInfoImpl : public ClusterInfo,
+                        public Event::DispatcherThreadDeletable,
+                        protected Logger::Loggable<Logger::Id::upstream> {
 public:
   using HttpProtocolOptionsConfigImpl =
       Envoy::Extensions::Upstreams::Http::ProtocolOptionsConfigImpl;
